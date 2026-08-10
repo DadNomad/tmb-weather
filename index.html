@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#175d8f">
+<title>TMB 2026 Live Weather Grid</title>
+<style>
+  :root {
+    --ink:#102a43; --muted:#5f6c7b; --line:#d8e0e8; --head:#d8eaf7;
+    --day:#f5f8fb; --accent:#175d8f; --accent-dark:#11466b; --paper:#ffffff;
+    --low:#dbeafe; --cool:#dff6f3; --mild:#ecf7dc; --warm:#fff3bf; --hot:#ffe0b2; --veryhot:#ffd1cf;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#f3f6f9;color:#17212b;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  .shell{max-width:1900px;margin:0 auto;padding:18px}
+  .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:6px}
+  .titleblock{margin-right:auto;min-width:280px}
+  h1{font-size:22px;line-height:1.2;margin:0;color:var(--ink)}
+  .sub{color:var(--muted);font-size:13px;margin-top:4px}
+  button{border:0;border-radius:10px;background:var(--accent);color:white;font-weight:700;padding:10px 15px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  button:hover{background:var(--accent-dark)} button:disabled{opacity:.55;cursor:wait}
+  .status{font-size:13px;color:var(--muted);min-width:230px;text-align:right}
+  .last-updated{font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600}
+  
+  .perm-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #eaf5ff;
+    border: 1px solid #175d8f;
+    border-radius: 10px;
+    padding: 10px 14px;
+    width: 100%;
+    font-size: 13px;
+    color: var(--ink);
+    margin: 8px 0;
+  }
+  .perm-banner button {
+    white-space: nowrap;
+    background: #175d8f;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .meta{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:8px 0 12px;font-size:12px;color:var(--muted)}
+  .meta a{color:var(--accent);text-decoration:none;font-weight:600}.meta a:hover{text-decoration:underline}
+  .legend{display:flex;flex-wrap:wrap;gap:7px;margin:7px 0 12px;font-size:11px}
+  .legend span{border:1px solid var(--line);border-radius:999px;padding:4px 8px;background:#fff}
+  .table-wrap{background:var(--paper);border:1px solid #cdd8e3;border-radius:12px;overflow:auto;box-shadow:0 2px 10px rgba(22,50,74,.06)}
+  table{border-collapse:separate;border-spacing:0;width:100%;min-width:1380px;font-size:14px}
+  thead th{position:sticky;top:0;z-index:5;background:var(--head);color:#0d3f68;text-align:left;font-weight:800;border-bottom:1px solid #b9cddd;padding:9px 8px;white-space:nowrap}
+  tbody td{padding:7px 8px;border-bottom:1px solid #e4e9ef;border-right:1px solid #edf1f4;vertical-align:top;line-height:1.25;background:#fff}
+  tbody tr.day-start td{border-top:3px solid #9fb9ce}
+  tbody tr:nth-child(even) td.route-static{background:#fbfcfe}
+  td.day{font-weight:800;white-space:nowrap;color:#102a43;min-width:62px}
+  td.date{font-weight:800;white-space:nowrap;color:#102a43;min-width:92px}
+  td.location{min-width:390px;max-width:480px}
+  td.country{min-width:150px;white-space:nowrap}
+  td.window{min-width:145px;white-space:nowrap;font-weight:700}
+  td.wx{min-width:150px;font-weight:700;text-align:center;vertical-align:middle;transition:background .2s ease}
+  td.hazard{min-width:360px;max-width:520px;font-weight:600}
+  tr.current-row td{background:#eaf5ff!important;border-top:0;border-bottom:2px solid #8fb9d6;font-weight:700}
+  tr.current-row td.location{color:#0d4f7a}
+  tr.current-row td.wx{font-weight:800}
+  .gps-note{font-size:11px;color:#5f6c7b;font-weight:500;margin-top:3px}
+  .temp-cold{background:#dbeafe!important;color:#164e86}.temp-cool{background:#dff6f3!important;color:#155e63}.temp-mild{background:#ecf7dc!important;color:#3f6212}.temp-warm{background:#fff3bf!important;color:#795800}.temp-hot{background:#ffe0b2!important;color:#8a3d08}.temp-veryhot{background:#ffd1cf!important;color:#8f1f18}
+  .wind-ok{background:#eef8ed!important;color:#27632a}.wind-med{background:#fff3bf!important;color:#765600}.wind-high{background:#ffe0b2!important;color:#853a08}.wind-severe{background:#ffd1cf!important;color:#8f1f18}
+  .precip-dry{background:#eef7ff!important;color:#22577a}.precip-cloud{background:#eef0f3!important;color:#4a5562}.precip-low{background:#e7f3ff!important;color:#1d5e8c}.precip-med{background:#d5e9ff!important;color:#154c79}.precip-high{background:#c6dcf4!important;color:#123f66}.precip-storm{background:#e0d5f4!important;color:#4b2b75}
+  .hazard-none{background:#fff!important;color:#52606d;font-weight:500!important}.hazard-watch{background:#fff7d6!important;color:#6b5300}.hazard-warn{background:#ffe4c6!important;color:#7c3900}.hazard-danger{background:#ffd7d7!important;color:#821d1d}
+  .badge{display:inline-block;border:1px solid currentColor;border-radius:999px;padding:2px 6px;font-size:10px;font-weight:800;margin-right:5px;opacity:.85}
+  .loading{opacity:.55}.error{color:#a11b1b}
+  .source-note{margin-top:10px;font-size:11px;color:#65717c;line-height:1.4}
+  @media (max-width:800px){.shell{padding:8px}.status{text-align:left;min-width:100%}h1{font-size:19px}.table-wrap{border-radius:8px}table{font-size:13px}}
+  @media print{body{background:#fff}.shell{max-width:none;padding:0}.toolbar button,.legend,.meta{display:none}.table-wrap{border:0;box-shadow:none;overflow:visible}table{min-width:0;font-size:9px}thead th{position:static}.source-note{font-size:8px}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="toolbar">
+    <div class="titleblock">
+      <h1>TMB 2026 — Live Weather by Route Window</h1>
+      <div class="sub">Top row = your live GPS location, local date/time, and next 2-hour forecast. TMB rows separate hike day (D1–D10) from calendar date.</div>
+    </div>
+    <button id="refreshBtn" type="button">⟳ Refresh latest forecast</button>
+    <div id="status" class="status">Ready</div>
+  </div>
+
+  <div id="permissionBanner" class="perm-banner" style="display:none;">
+    <span>📍 Enable location access to show live weather for your current position.</span>
+    <button id="enableGpsBtn" type="button">Enable GPS Access</button>
+  </div>
+
+  <div id="lastUpdated" class="last-updated">Last updated: Never</div>
+  <div class="meta">
+    <span><b>Times:</b> CEST (France / Italy / Switzerland)</span>
+    <span><b>Numeric forecast:</b> Open-Meteo Best Match</span>
+    <span><b>Official alerts:</b></span>
+    <a href="https://vigilance.meteofrance.fr/fr" target="_blank" rel="noopener">Météo-France</a>
+    <a href="https://cf.regione.vda.it/en/" target="_blank" rel="noopener">Valle d’Aosta</a>
+    <a href="https://www.meteoswiss.admin.ch/weather/warning-and-forecasting-systems/warnings.html" target="_blank" rel="noopener">MeteoSwiss</a>
+  </div>
+  <div class="legend">
+    <span style="background:#dbeafe">Cold &lt;45°F</span><span style="background:#dff6f3">Cool 45–54°F</span><span style="background:#ecf7dc">Mild 55–67°F</span><span style="background:#fff3bf">Warm 68–77°F</span><span style="background:#ffe0b2">Hot 78–84°F</span><span style="background:#ffd1cf">Very hot ≥85°F</span>
+    <span>☀️ dry</span><span>⛅ cloudy</span><span>🌦️ showers</span><span>🌧️ rain</span><span>⛈️ thunderstorm signal</span>
+  </div>
+  <div class="table-wrap">
+    <table id="weatherTable">
+      <thead><tr>
+        <th>Day</th><th>Date</th><th>Location + Elevation</th><th>Country</th><th>Expected Time Window</th><th>Temp</th><th>Wind / Gusts</th><th>Precip</th><th>Weather / Hazard</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div class="source-note">
+    Refresh uses the Open-Meteo generic “Best Match” forecast, which can blend the best available numerical models for the location and lead time, including high-resolution European national-provider models and ECMWF guidance. Mountain forecasts remain inherently sensitive to terrain. The Weather / Hazard column is a <b>model-derived hiking flag</b>, not an official advisory. Official national warnings linked above should override this table.
+  </div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((err) => console.error('SW registration failed:', err));
+  });
+}
+
+const ROUTES = [{"day": "D1 · Aug 16", "location": "Les Houches → Bellevue / Col de Voza · 3,314–5,896 ft", "country": "France", "window": "8–10 AM", "seedTemp": "62–64°F*", "seedWind": "~3 mph valley*", "seedPrecip": "0%", "seedHazard": "Morning currently looks dry. Higher Bellevue terrain will be cooler than valley forecast; PM thunderstorm signal is being monitored.", "date": "2026-08-16", "anchor": "Bellevue Les Houches France", "fallbackLat": 45.88, "fallbackLon": 6.776, "forecastElevationFt": 5200}, {"day": "D1 · Aug 16", "location": "Bionnassay / Le Champel · ~4,337–3,970 ft", "country": "France", "window": "10 AM–12 PM", "seedTemp": "67–68°F", "seedWind": "TBD", "seedPrecip": "0%", "seedHazard": "Morning currently dry. Afternoon thunderstorm risk appears later, not in this window.", "date": "2026-08-16", "anchor": "Bionnassay France", "fallbackLat": 45.855, "fallbackLon": 6.759, "forecastElevationFt": 4150}, {"day": "D1 · Aug 16", "location": "Les Contamines-Montjoie · ~3,812 ft", "country": "France", "window": "12–2 PM", "seedTemp": "71–73°F", "seedWind": "~3 mph daily model*", "seedPrecip": "0–1%", "seedHazard": "Clouds building. Forecasts diverge on afternoon convection; keep monitoring.", "date": "2026-08-16", "anchor": "Les Contamines-Montjoie France", "fallbackLat": 45.821, "fallbackLon": 6.728, "forecastElevationFt": 3812}, {"day": "D1 · Aug 16", "location": "Gîte Les Mélèzes · ~3,852 ft", "country": "France", "window": "2–4 PM", "seedTemp": "75–77°F", "seedWind": "~3 mph daily model*", "seedPrecip": "~19%", "seedHazard": "Afternoon showers/thunderstorm signal in one current forecast; still ~7 days out and low confidence.", "date": "2026-08-16", "anchor": "Les Contamines-Montjoie France", "fallbackLat": 45.821, "fallbackLon": 6.728, "forecastElevationFt": 3852}, {"day": "D2 · Aug 17", "location": "Les Mélèzes → Nant Borrant · 3,852–4,793 ft", "country": "France", "window": "8–10 AM", "seedTemp": "TBD (daily 60–76°F)*", "seedWind": "~4 mph daily model*", "seedPrecip": "0.4–0.8\" daily*", "seedHazard": "Long-range daily guidance only: showers signal. Replace with 2-hour point forecast once available.", "date": "2026-08-17", "anchor": "Nant Borrant France", "fallbackLat": 45.799, "fallbackLon": 6.715, "forecastElevationFt": 4793}, {"day": "D2 · Aug 17", "location": "Refuge de la Balme / Plan Jovet · 5,607–6,283 ft", "country": "France", "window": "10 AM–12 PM", "seedTemp": "TBD", "seedWind": "TBD", "seedPrecip": "Showers possible*", "seedHazard": "Higher terrain. Time-window point forecast not yet reliable at this lead time.", "date": "2026-08-17", "anchor": "Plan Jovet Les Contamines France", "fallbackLat": 45.766, "fallbackLon": 6.713, "forecastElevationFt": 6283}, {"day": "D2 · Aug 17", "location": "Col du Bonhomme · 7,648 ft", "country": "France", "window": "12–2 PM", "seedTemp": "~52–59°F pass proxy*", "seedWind": "~9 mph daily proxy*", "seedPrecip": "0.2–0.4\" daily proxy*", "seedHazard": "Using nearby Col de la Croix high-pass guidance as a proxy. Showers/rain signal; exposed terrain.", "date": "2026-08-17", "anchor": "Col du Bonhomme France", "fallbackLat": 45.737, "fallbackLon": 6.716, "forecastElevationFt": 7648}, {"day": "D2 · Aug 17", "location": "Col de la Croix du Bonhomme · 8,169 ft", "country": "France", "window": "2–4 PM", "seedTemp": "52–59°F daily range*", "seedWind": "~9 mph daily model*", "seedPrecip": "0.2–0.4\" daily*", "seedHazard": "Current long-range model favors showers/rain. Exposed pass; confidence still low at ~8 days.", "date": "2026-08-17", "anchor": "Col de la Croix du Bonhomme France", "fallbackLat": 45.722, "fallbackLon": 6.717, "forecastElevationFt": 8169}, {"day": "D2 · Aug 17", "location": "Descent → Les Chapieux · ~5,089 ft", "country": "France", "window": "4–6 PM", "seedTemp": "50–66°F daily range*", "seedWind": "~6 mph daily model*", "seedPrecip": "0.2–0.4\" daily*", "seedHazard": "Long-range model has showers. Replace with hourly values as the stage enters the short-range window.", "date": "2026-08-17", "anchor": "Les Chapieux France", "fallbackLat": 45.696, "fallbackLon": 6.734, "forecastElevationFt": 5089}, {"day": "D3 · Aug 18", "location": "Les Chapieux / lower Vallée des Glaciers · ~5,089–5,820 ft", "country": "France", "window": "8–10 AM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-18", "anchor": "Les Chapieux France", "fallbackLat": 45.696, "fallbackLon": 6.734, "forecastElevationFt": 5600}, {"day": "D3 · Aug 18", "location": "Refuge des Mottets / climb · ~6,125 ft", "country": "France", "window": "10 AM–12 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-18", "anchor": "Refuge des Mottets France", "fallbackLat": 45.703, "fallbackLon": 6.783, "forecastElevationFt": 6125}, {"day": "D3 · Aug 18", "location": "Upper Vallée des Glaciers / Col de la Seigne approach · 6,500–8,241 ft", "country": "France", "window": "12–2 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-18", "anchor": "Col de la Seigne France", "fallbackLat": 45.724, "fallbackLon": 6.795, "forecastElevationFt": 7500}, {"day": "D3 · Aug 18", "location": "Col de la Seigne → La Casermetta · 8,241–7,759 ft", "country": "France → Italy", "window": "2–4 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-18", "anchor": "Col de la Seigne France", "fallbackLat": 45.75, "fallbackLon": 6.807, "forecastElevationFt": 8241}, {"day": "D3 · Aug 18", "location": "Upper Val Veny → Cabane Combal · ~7,000–6,460 ft", "country": "Italy", "window": "4–6 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-18", "anchor": "Cabane Combal Courmayeur Italy", "fallbackLat": 45.789, "fallbackLon": 6.857, "forecastElevationFt": 6900}, {"day": "D4 · Aug 19", "location": "Cabane Combal → Mont Favre climb · 6,460–7,972 ft", "country": "Italy", "window": "8–10 AM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-19", "anchor": "Mont Favre Courmayeur Italy", "fallbackLat": 45.797, "fallbackLon": 6.894, "forecastElevationFt": 7972}, {"day": "D4 · Aug 19", "location": "Mont Favre Spur → Col Chécrouit · 7,972–6,411 ft", "country": "Italy", "window": "10 AM–12 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-19", "anchor": "Col Checrouit Courmayeur Italy", "fallbackLat": 45.792, "fallbackLon": 6.931, "forecastElevationFt": 7200}, {"day": "D4 · Aug 19", "location": "Plan Chécrouit / Dolonne → Courmayeur · 5,597–3,947 ft", "country": "Italy", "window": "12–2 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-19", "anchor": "Courmayeur Italy", "fallbackLat": 45.792, "fallbackLon": 6.972, "forecastElevationFt": 4500}, {"day": "D5 · Aug 20", "location": "Courmayeur → Bertone climb · 3,947–6,512 ft", "country": "Italy", "window": "8–10 AM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-20", "anchor": "Rifugio Bertone Courmayeur Italy", "fallbackLat": 45.817, "fallbackLon": 7.0, "forecastElevationFt": 6512}, {"day": "D5 · Aug 20", "location": "Rifugio Bertone / start Val Ferret balcony · ~6,512 ft", "country": "Italy", "window": "10 AM–12 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-20", "anchor": "Rifugio Bertone Courmayeur Italy", "fallbackLat": 45.817, "fallbackLon": 7.0, "forecastElevationFt": 6512}, {"day": "D5 · Aug 20", "location": "Val Ferret balcony · ~6,300–6,500 ft", "country": "Italy", "window": "12–2 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-20", "anchor": "Val Ferret Courmayeur Italy", "fallbackLat": 45.835, "fallbackLon": 7.019, "forecastElevationFt": 6400}, {"day": "D5 · Aug 20", "location": "Rifugio Bonatti / Malatra Desot · 6,644–6,716 ft", "country": "Italy", "window": "2–4 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-20", "anchor": "Rifugio Bonatti Courmayeur Italy", "fallbackLat": 45.849, "fallbackLon": 7.033, "forecastElevationFt": 6716}, {"day": "D5 · Aug 20", "location": "Descent → Chalet Val Ferret · ~6,700–5,810 ft", "country": "Italy", "window": "4–6 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-20", "anchor": "Lavachey Courmayeur Italy", "fallbackLat": 45.86, "fallbackLon": 7.028, "forecastElevationFt": 6100}, {"day": "D6 · Aug 21", "location": "Chalet Val Ferret → Rifugio Elena · 5,810–6,772 ft", "country": "Italy", "window": "8–10 AM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-21", "anchor": "Rifugio Elena Courmayeur Italy", "fallbackLat": 45.886, "fallbackLon": 7.064, "forecastElevationFt": 6772}, {"day": "D6 · Aug 21", "location": "Grand Col Ferret climb / pass · up to 8,323 ft", "country": "Italy → Switzerland", "window": "10 AM–12 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-21", "anchor": "Grand Col Ferret Switzerland", "fallbackLat": 45.891, "fallbackLon": 7.078, "forecastElevationFt": 8323}, {"day": "D6 · Aug 21", "location": "Grand Col Ferret → La Peule · 8,323–6,795 ft", "country": "Switzerland", "window": "12–2 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-21", "anchor": "La Peule Switzerland", "fallbackLat": 45.901, "fallbackLon": 7.094, "forecastElevationFt": 7600}, {"day": "D6 · Aug 21", "location": "Swiss Val Ferret → La Fouly · ~6,000–5,253 ft", "country": "Switzerland", "window": "2–4 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-21", "anchor": "La Fouly Switzerland", "fallbackLat": 45.932, "fallbackLon": 7.098, "forecastElevationFt": 5600}, {"day": "D7 · Aug 22", "location": "La Fouly → Swiss Val Ferret · ~5,253–4,500 ft", "country": "Switzerland", "window": "8–10 AM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-22", "anchor": "La Fouly Switzerland", "fallbackLat": 45.949, "fallbackLon": 7.107, "forecastElevationFt": 4900}, {"day": "D7 · Aug 22", "location": "Praz-de-Fort / Issert approach · ~3,800–3,500 ft", "country": "Switzerland", "window": "10 AM–12 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-22", "anchor": "Praz-de-Fort Switzerland", "fallbackLat": 45.961, "fallbackLon": 7.122, "forecastElevationFt": 3650}, {"day": "D7 · Aug 22", "location": "Issert → Champex climb · 3,451–4,300 ft", "country": "Switzerland", "window": "12–2 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-22", "anchor": "Issert Orsieres Switzerland", "fallbackLat": 46.008, "fallbackLon": 7.115, "forecastElevationFt": 4300}, {"day": "D7 · Aug 22", "location": "Champex-Lac / Pension en Plein Air · ~4,820–4,856 ft", "country": "Switzerland", "window": "2–4 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-22", "anchor": "Champex-Lac Switzerland", "fallbackLat": 46.031, "fallbackLon": 7.117, "forecastElevationFt": 4856}, {"day": "D8 · Aug 23", "location": "Champex-Lac → Plan de l’Au · 4,856–4,367 ft", "country": "Switzerland", "window": "8–10 AM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-23", "anchor": "Plan de l Au Champex Switzerland", "fallbackLat": 46.034, "fallbackLon": 7.101, "forecastElevationFt": 4600}, {"day": "D8 · Aug 23", "location": "Alp Bovine climb · 4,367–6,483 ft", "country": "Switzerland", "window": "10 AM–12 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-23", "anchor": "Alp Bovine Switzerland", "fallbackLat": 46.038, "fallbackLon": 7.061, "forecastElevationFt": 6000}, {"day": "D8 · Aug 23", "location": "Alp Bovine / high point · 6,483–6,699 ft", "country": "Switzerland", "window": "12–2 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-23", "anchor": "Alp Bovine Switzerland", "fallbackLat": 46.038, "fallbackLon": 7.061, "forecastElevationFt": 6699}, {"day": "D8 · Aug 23", "location": "Descent → Col de la Forclaz · 6,699–5,010 ft", "country": "Switzerland", "window": "2–4 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-23", "anchor": "Col de la Forclaz Trient Switzerland", "fallbackLat": 46.058, "fallbackLon": 7.001, "forecastElevationFt": 5800}, {"day": "D9 · Aug 24", "location": "Col de la Forclaz → Le Peuty · 5,010–4,357 ft", "country": "Switzerland", "window": "8–10 AM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-24", "anchor": "Trient Switzerland", "fallbackLat": 46.06, "fallbackLon": 6.996, "forecastElevationFt": 4700}, {"day": "D9 · Aug 24", "location": "Le Peuty → Col de Balme climb · 4,357–7,224 ft", "country": "Switzerland", "window": "10 AM–12 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-24", "anchor": "Col de Balme France", "fallbackLat": 46.027, "fallbackLon": 6.97, "forecastElevationFt": 7000}, {"day": "D9 · Aug 24", "location": "Col de Balme → Col des Posettes / Aiguillette · 7,224–7,201 ft", "country": "Switzerland → France", "window": "12–2 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-24", "anchor": "Aiguillette des Posettes France", "fallbackLat": 46.006, "fallbackLon": 6.932, "forecastElevationFt": 7201}, {"day": "D9 · Aug 24", "location": "Aiguillette des Posettes → Tré-le-Champ / La Boërne · 7,201–4,570 ft", "country": "France", "window": "2–4 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-24", "anchor": "Tre-le-Champ Chamonix France", "fallbackLat": 46.001, "fallbackLon": 6.93, "forecastElevationFt": 6000}, {"day": "D10 · Aug 25", "location": "La Boërne → Col des Montets · 4,570–4,980 ft", "country": "France", "window": "8–10 AM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-25", "anchor": "Col des Montets Chamonix France", "fallbackLat": 46.002, "fallbackLon": 6.924, "forecastElevationFt": 4980}, {"day": "D10 · Aug 25", "location": "Col des Montets → Chéserys climb · 4,980–6,998 ft", "country": "France", "window": "10 AM–12 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-25", "anchor": "Lacs des Cheserys Chamonix France", "fallbackLat": 45.991, "fallbackLon": 6.914, "forecastElevationFt": 6500}, {"day": "D10 · Aug 25", "location": "Tête aux Vents / Chéserys → La Flégère · ~6,991–6,000 ft", "country": "France", "window": "12–2 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-25", "anchor": "La Flegere Chamonix France", "fallbackLat": 45.975, "fallbackLon": 6.895, "forecastElevationFt": 6600}, {"day": "D10 · Aug 25", "location": "Charlanon → Plan Praz / gondola · ~5,900–6,800 ft", "country": "France", "window": "2–4 PM", "seedTemp": "", "seedWind": "", "seedPrecip": "", "seedHazard": "", "date": "2026-08-25", "anchor": "Planpraz Chamonix France", "fallbackLat": 45.943, "fallbackLon": 6.874, "forecastElevationFt": 6500}];
+const WINDOW_HOURS = {"8–10 AM":[8,10],"10 AM–12 PM":[10,12],"12–2 PM":[12,14],"2–4 PM":[14,16],"4–6 PM":[16,18]};
+const tbody = document.getElementById('tbody');
+const statusEl = document.getElementById('status');
+const refreshBtn = document.getElementById('refreshBtn');
+const lastUpdatedEl = document.getElementById('lastUpdated');
+const permBanner = document.getElementById('permissionBanner');
+const enableGpsBtn = document.getElementById('enableGpsBtn');
+
+const CACHE_KEY = 'tmb2026_live_weather_v3';
+const GEO_PREFIX = 'tmb2026_geo_v2:';
+const PERM_KEY = 'tmb2026_loc_perm_requested';
+
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
+
+function updateLastUpdatedTimestamp(ts) {
+  if (!ts) return;
+  const date = new Date(ts);
+  lastUpdatedEl.textContent = `Last updated: ${date.toLocaleDateString()} at ${date.toLocaleTimeString()}`;
+}
+
+function renderSeed(){
+  let lastDay='';
+  const currentRow = `<tr id="currentRow" class="current-row">
+      <td class="day route-static">NOW</td>
+      <td class="date route-static" id="currentDate">—</td>
+      <td class="location route-static" id="currentLocation">Current location<div class="gps-note">Press Refresh to identify this place and update the next 2 hours.</div></td>
+      <td class="country route-static" id="currentCountry">—</td>
+      <td class="window route-static" id="currentWindow">Now → +2 hr</td>
+      <td class="wx temp" id="currentTemp">—</td>
+      <td class="wx wind" id="currentWind">—</td>
+      <td class="wx precip" id="currentPrecip">—</td>
+      <td class="hazard hazard-none" id="currentHazard">—</td>
+    </tr>`;
+  const routeRows = ROUTES.map((r,i)=>{
+    const start = r.day!==lastDay; lastDay=r.day;
+    const parts = String(r.day).split('·').map(s=>s.trim());
+    const stage = parts[0] || '';
+    const date = parts.slice(1).join(' · ') || '';
+    return `<tr data-index="${i}" class="${start?'day-start':''}">
+      <td class="day route-static">${esc(stage)}</td>
+      <td class="date route-static">${esc(date)}</td>
+      <td class="location route-static">${esc(r.location)}</td>
+      <td class="country route-static">${esc(r.country)}</td>
+      <td class="window route-static">${esc(r.window)}</td>
+      <td class="wx temp" data-col="temp">${esc(r.seedTemp||'—')}</td>
+      <td class="wx wind" data-col="wind">${esc(r.seedWind||'—')}</td>
+      <td class="wx precip" data-col="precip">${esc(r.seedPrecip||'—')}</td>
+      <td class="hazard ${r.seedHazard?'hazard-watch':'hazard-none'}" data-col="hazard">${esc(r.seedHazard||'—')}</td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML = currentRow + routeRows;
+}
+
+function setStatus(text, err=false){statusEl.textContent=text; statusEl.classList.toggle('error',err);}
+function cToM(ft){return Math.round(ft*0.3048)}
+function countryHint(country){ if(country.includes('Italy')) return 'IT'; if(country.includes('Switzerland')) return 'CH'; return 'FR'; }
+
+async function geocodeRow(r){
+  const key = GEO_PREFIX+r.anchor;
+  try{ const cached = JSON.parse(localStorage.getItem(key)||'null'); if(cached?.lat) return cached; }catch(e){}
+  try{
+    const u = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(r.anchor)}&count=8&language=en&format=json`;
+    const res = await fetch(u); if(!res.ok) throw new Error('geocode');
+    const j = await res.json();
+    const hint=countryHint(r.country);
+    const candidates=(j.results||[]);
+    const hit=candidates.find(x=>x.country_code===hint)||candidates[0];
+    if(hit){ const v={lat:hit.latitude,lon:hit.longitude}; try{localStorage.setItem(key,JSON.stringify(v));}catch(e){} return v; }
+  }catch(e){}
+  return {lat:r.fallbackLat,lon:r.fallbackLon};
+}
+
+function severityCode(c){
+  const ranks={0:0,1:1,2:2,3:3,45:4,48:4,51:5,53:5,55:6,56:6,57:7,61:6,63:7,65:8,66:7,67:8,71:6,73:7,75:8,77:7,80:6,81:7,82:8,85:7,86:8,95:10,96:11,99:12};
+  return ranks[c]??0;
+}
+function worstCode(codes){ return (codes||[]).reduce((a,b)=>severityCode(b)>severityCode(a)?b:a,0); }
+function weatherIcon(code, prob, amount, cloud, cape){
+  if(code>=95 || (cape>=800 && prob>=30)) return '⛈️';
+  if([71,73,75,77,85,86].includes(code)) return '🌨️';
+  if(amount>=0.08 || prob>=60 || [63,65,67,82].includes(code)) return '🌧️';
+  if(amount>0 || prob>=20 || [51,53,55,61,80,81].includes(code)) return '🌦️';
+  if(code===45||code===48) return '🌫️';
+  if(cloud>=70 || code===3) return '☁️';
+  if(cloud>=30 || code===2) return '⛅';
+  if(code===1) return '🌤️';
+  return '☀️';
+}
+function tempClass(maxT){ if(maxT<45)return'temp-cold'; if(maxT<55)return'temp-cool'; if(maxT<68)return'temp-mild'; if(maxT<78)return'temp-warm'; if(maxT<85)return'temp-hot'; return'temp-veryhot'; }
+function windClass(w,g){ const m=Math.max(w||0,g||0); if(m<15)return'wind-ok'; if(m<25)return'wind-med'; if(m<35)return'wind-high'; return'wind-severe'; }
+function precipClass(code,p,a,cape){ if(code>=95||(cape>=800&&p>=30))return'precip-storm'; if(p>=60||a>=0.08)return'precip-high'; if(p>=30||a>=0.02)return'precip-med'; if(p>5||a>0)return'precip-low'; return code>=2?'precip-cloud':'precip-dry'; }
+function fmtRange(min,max,unit=''){ if(!Number.isFinite(min)||!Number.isFinite(max))return'—'; const a=Math.round(min),b=Math.round(max); return a===b?`${a}${unit}`:`${a}–${b}${unit}`; }
+function confidence(dateISO){
+  const today=new Date(); const target=new Date(dateISO+'T12:00:00');
+  const diff=Math.ceil((target-today)/86400000);
+  if(diff<=3)return {label:'HIGH',cls:'hazard-none'};
+  if(diff<=7)return {label:'MED',cls:'hazard-watch'};
+  if(diff<=10)return {label:'LOW',cls:'hazard-watch'};
+  return {label:'OUTLOOK',cls:'hazard-watch'};
+}
+function aggregateForecast(r, f){
+  const wh=WINDOW_HOURS[r.window]; if(!wh) return null;
+  const [start,end]=wh; const h=f.hourly; if(!h?.time) return null;
+  const idx=[];
+  h.time.forEach((t,i)=>{ const d=t.slice(0,10), hr=Number(t.slice(11,13)); if(d===r.date && hr>=start && hr<end) idx.push(i); });
+  if(!idx.length) return null;
+  const vals=(name)=>idx.map(i=>Number(h[name]?.[i])).filter(Number.isFinite);
+  const temps=vals('temperature_2m'), winds=vals('wind_speed_10m'), gusts=vals('wind_gusts_10m'), probs=vals('precipitation_probability'), amts=vals('precipitation'), codes=idx.map(i=>Number(h.weather_code?.[i]||0)), clouds=vals('cloud_cover'), vis=vals('visibility'), capes=vals('cape');
+  const minT=Math.min(...temps),maxT=Math.max(...temps),wind=Math.max(0,...winds),gust=Math.max(0,...gusts),prob=Math.max(0,...probs),amt=amts.reduce((a,b)=>a+b,0),code=worstCode(codes),cloud=clouds.length?clouds.reduce((a,b)=>a+b,0)/clouds.length:0,visibility=vis.length?Math.min(...vis):999999,cape=capes.length?Math.max(...capes):0;
+  return {minT,maxT,wind,gust,prob,amt,code,cloud,visibility,cape};
+}
+function deriveHazard(r,x){
+  const notes=[]; let level=0;
+  if(x.code>=95 || (x.cape>=800 && x.prob>=30)){notes.push('⚡ Thunderstorm signal');level=3;}
+  if(x.gust>=35){notes.push(`💨 Gusts to ${Math.round(x.gust)} mph`);level=Math.max(level,3);} else if(x.gust>=25){notes.push(`💨 Gusty ${Math.round(x.gust)} mph`);level=Math.max(level,2);} else if(x.wind>=18){notes.push(`💨 Wind ${Math.round(x.wind)} mph`);level=Math.max(level,1);}
+  if(x.amt>=0.15){notes.push(`🌧️ Wet window ~${x.amt.toFixed(2)}″`);level=Math.max(level,2);} else if(x.prob>=50){notes.push(`🌦️ ${Math.round(x.prob)}% precip`);level=Math.max(level,1);}
+  if(x.maxT>=85){notes.push(`🥵 Heat ${Math.round(x.maxT)}°F`);level=Math.max(level,2);} else if(x.maxT>=80){notes.push(`☀️ Warm ${Math.round(x.maxT)}°F`);level=Math.max(level,1);}
+  if(x.minT<=40){notes.push(`🥶 Cold ${Math.round(x.minT)}°F`);level=Math.max(level,1);}
+  if(x.visibility<=3000){notes.push('🌫️ Low visibility');level=Math.max(level,2);}
+  const exposed=/Col |Aiguillette|Tête|Bovine|Mont Favre|Chéserys|Ferret|Seigne|Bonhomme/i.test(r.location);
+  if(exposed && (level>=2 || x.gust>=22)) notes.push('⛰️ Exposed terrain');
+  const conf=confidence(r.date); if(conf.label==='LOW'||conf.label==='OUTLOOK') notes.push(`${conf.label==='LOW'?'Low confidence':'Very low confidence'} — long range`);
+  return {text:notes.join(' · ')||'—', level};
+}
+function paintCell(el, cls){ el.className=el.className.replace(/\b(temp|wind|precip|hazard)-[\w-]+\b/g,'').trim(); el.classList.add(cls); }
+function applyRow(i,x){
+  const tr=tbody.querySelector(`tr[data-index="${i}"]`); if(!tr||!x)return;
+  const temp=tr.querySelector('[data-col="temp"]'), wind=tr.querySelector('[data-col="wind"]'), precip=tr.querySelector('[data-col="precip"]'), hazard=tr.querySelector('[data-col="hazard"]');
+  temp.textContent=fmtRange(x.minT,x.maxT,'°F'); paintCell(temp,tempClass(x.maxT));
+  wind.textContent=`${Math.round(x.wind)} mph · G${Math.round(x.gust)}`; paintCell(wind,windClass(x.wind,x.gust));
+  const icon=weatherIcon(x.code,x.prob,x.amt,x.cloud,x.cape); precip.textContent=`${icon} ${Math.round(x.prob)}% · ${x.amt.toFixed(2)}″`; paintCell(precip,precipClass(x.code,x.prob,x.amt,x.cape));
+  const hz=deriveHazard(ROUTES[i],x); hazard.innerHTML=`<span class="badge">${confidence(ROUTES[i].date).label}</span>${esc(hz.text)}`; paintCell(hazard,hz.level>=3?'hazard-danger':hz.level===2?'hazard-warn':hz.level===1?'hazard-watch':'hazard-none');
+}
+function applyCached(){
+  try{
+    const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');
+    if(!c?.rows)return false;
+    c.rows.forEach((x,i)=>x&&applyRow(i,x));
+    updateLastUpdatedTimestamp(c.timestamp);
+    setStatus(`Cached forecast · ${new Date(c.timestamp).toLocaleString()}`);
+    return true;
+  }catch(e){return false;}
+}
+
+function getGeoPosition(options={enableHighAccuracy:true,timeout:12000,maximumAge:120000}){
+  return new Promise((resolve,reject)=>{
+    if(!navigator.geolocation) return reject(new Error('Location is not supported by this browser'));
+    navigator.geolocation.getCurrentPosition(resolve,reject,options);
+  });
+}
+function fmtClock(date, timeZone){
+  return new Intl.DateTimeFormat(undefined,{
+    hour:'numeric',
+    minute:'2-digit',
+    hour12:true,
+    timeZone
+  }).format(date);
+}
+function shortCountry(countryCode,countryName){
+  const cc=String(countryCode||'').toUpperCase();
+  if(cc==='US') return 'USA';
+  if(cc==='FR') return 'France';
+  if(cc==='IT') return 'Italy';
+  if(cc==='CH') return 'Switzerland';
+  if(cc==='GB') return 'UK';
+  return countryName||cc||'GPS';
+}
+function shortRegion(regionCode,regionName,countryCode){
+  const code=String(regionCode||'').toUpperCase();
+  const suffix=code.includes('-') ? code.split('-').pop() : code;
+  const named={'AUVERGNE-RHÔNE-ALPES':'ARA','AUVERGNE-RHONE-ALPES':'ARA','VALAIS':'VS','WALLIS':'VS','VALLE D’AOSTA':'AO',"VALLE D'AOSTA":'AO','AOSTA VALLEY':'AO','VALLÉE D’AOSTE':'AO'};
+  const key=String(regionName||'').toUpperCase();
+  if(named[key]) return named[key];
+  if(suffix && /^[A-Z]{2,4}$/.test(suffix)) return suffix;
+  if(regionName){
+    const cleaned=String(regionName).replace(/^Region of /i,'').trim();
+    return cleaned.length<=16 ? cleaned : cleaned.split(/[-\s]/).map(x=>x[0]).join('').slice(0,4).toUpperCase();
+  }
+  return '';
+}
+async function reverseGeocodeCurrent(lat,lon){
+  try{
+    const url=`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&localityLanguage=en`;
+    const res=await fetch(url);
+    if(!res.ok) throw new Error(`Reverse geocoder ${res.status}`);
+    const j=await res.json();
+    const locality=j.city||j.locality||'Current location';
+    const country=shortCountry(j.countryCode,j.countryName);
+    const region=shortRegion(j.principalSubdivisionCode,j.principalSubdivision,j.countryCode);
+    const label=[locality,region,country].filter(Boolean).join(', ');
+    return {label,country};
+  }catch(e){
+    return {label:`${lat.toFixed(4)}, ${lon.toFixed(4)}`,country:'GPS'};
+  }
+}
+function applyCurrentForecast(x, meta){
+  const dateEl=document.getElementById('currentDate'), loc=document.getElementById('currentLocation'), country=document.getElementById('currentCountry'), win=document.getElementById('currentWindow');
+  const temp=document.getElementById('currentTemp'), wind=document.getElementById('currentWind'), precip=document.getElementById('currentPrecip'), hazard=document.getElementById('currentHazard');
+  dateEl.textContent=new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric',timeZone:meta.timeZone}).format(meta.now);
+  loc.innerHTML=`${esc(meta.placeName)} · ~${Math.round(meta.elevationFt).toLocaleString()} ft<div class="gps-note">GPS ${meta.lat.toFixed(4)}, ${meta.lon.toFixed(4)}</div>`;
+  country.textContent=meta.countryName||'GPS';
+  win.innerHTML=`${esc(fmtClock(meta.now,meta.timeZone))}–${esc(fmtClock(meta.end,meta.timeZone))}<div class="gps-note">${esc(meta.timeZoneAbbr||'')} · ${esc(meta.timeZone)}</div>`;
+  temp.textContent=fmtRange(x.minT,x.maxT,'°F'); paintCell(temp,tempClass(x.maxT));
+  wind.textContent=`${Math.round(x.wind)} mph · G${Math.round(x.gust)}`; paintCell(wind,windClass(x.wind,x.gust));
+  const icon=weatherIcon(x.code,x.prob,x.amt,x.cloud,x.cape); precip.textContent=`${icon} ${Math.round(x.prob)}% · ${x.amt.toFixed(2)}″`; paintCell(precip,precipClass(x.code,x.prob,x.amt,x.cape));
+  const fake={location:meta.placeName,date:new Intl.DateTimeFormat('en-CA',{timeZone:meta.timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(meta.now)};
+  const hz=deriveHazard(fake,x); hazard.innerHTML=`<span class="badge">NOW</span>${esc(hz.text)}`; paintCell(hazard,hz.level>=3?'hazard-danger':hz.level===2?'hazard-warn':hz.level===1?'hazard-watch':'hazard-none');
+}
+function aggregateCurrentForecast(f){
+  const h=f.hourly; if(!h?.time) return null;
+  const idx=h.time.map((_,i)=>i);
+  if(!idx.length) return null;
+  const vals=(name)=>idx.map(i=>Number(h[name]?.[i])).filter(Number.isFinite);
+  const temps=vals('temperature_2m'),winds=vals('wind_speed_10m'),gusts=vals('wind_gusts_10m'),probs=vals('precipitation_probability'),amts=vals('precipitation'),codes=idx.map(i=>Number(h[name]?.[i]||0)),clouds=vals('cloud_cover'),vis=vals('visibility'),capes=vals('cape');
+  return {minT:Math.min(...temps),maxT:Math.max(...temps),wind:Math.max(0,...winds),gust:Math.max(0,...gusts),prob:Math.max(0,...probs),amt:amts.reduce((a,b)=>a+b,0),code:worstCode(codes),cloud:clouds.length?clouds.reduce((a,b)=>a+b,0)/clouds.length:0,visibility:vis.length?Math.min(...vis):999999,cape:capes.length?Math.max(...capes):0};
+}
+async function refreshCurrentLocation(promptUser=true){
+  const hazard=document.getElementById('currentHazard');
+  try{
+    if(!promptUser && navigator.permissions?.query){
+      const perm=await navigator.permissions.query({name:'geolocation'});
+      if(perm.state!=='granted') return false;
+    }
+    hazard.textContent='Getting current location…';
+    const pos=await getGeoPosition();
+    localStorage.setItem(PERM_KEY, 'granted');
+    permBanner.style.display = 'none';
+
+    const {latitude:lat,longitude:lon,altitude}=pos.coords;
+
+    const hourly='temperature_2m,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m,weather_code,cloud_cover,visibility,cape';
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=${hourly}&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_hours=3&cell_selection=land`;
+    const [weatherRes,place] = await Promise.all([
+      fetch(url),
+      reverseGeocodeCurrent(lat,lon)
+    ]);
+    if(!weatherRes.ok) throw new Error(`Forecast server ${weatherRes.status}`);
+    const f=await weatherRes.json();
+    const x=aggregateCurrentForecast(f); if(!x) throw new Error('No 2-hour forecast returned');
+
+    const elevFt=Number.isFinite(altitude)?altitude*3.28084:Number(f.elevation||0)*3.28084;
+    const timeZone=f.timezone||Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const timeZoneAbbr=f.timezone_abbreviation||'';
+    const now=new Date();
+    const end=new Date(now.getTime()+2*60*60*1000);
+
+    applyCurrentForecast(x,{
+      lat,lon,elevationFt:elevFt,
+      placeName:place.label,
+      countryName:place.country,
+      timeZone,timeZoneAbbr,
+      now,end
+    });
+    return true;
+  // Replace the catch block in refreshCurrentLocation with this:
+} catch(e) {
+  let errorMsg = e.message || 'Unknown error';
+  if (e.code === 1) errorMsg = 'PERMISSION_DENIED: Check Chrome & Android location settings.';
+  if (e.code === 2) errorMsg = 'POSITION_UNAVAILABLE: Turn on Phone GPS / Location.';
+  if (e.code === 3) errorMsg = 'TIMEOUT: Location request timed out.';
+  if (!window.isSecureContext) errorMsg = 'INSECURE ORIGIN: Geolocation requires HTTPS or localhost.';
+
+  alert(`GPS Error: ${errorMsg}`);
+  hazard.textContent = `Location unavailable: ${errorMsg}`;
+  return false;
+}
+}
+
+async function refreshWeather(force=true){
+  refreshBtn.disabled=true; document.body.classList.add('loading'); setStatus('Updating current location…');
+  try{
+    await refreshCurrentLocation(force);
+    setStatus('Resolving route points…');
+    const coords=[];
+    for(let i=0;i<ROUTES.length;i+=8){
+      const chunk=ROUTES.slice(i,i+8); const got=await Promise.all(chunk.map(geocodeRow)); coords.push(...got); setStatus(`Resolving route points… ${Math.min(i+8,ROUTES.length)}/${ROUTES.length}`);
+    }
+    setStatus('Downloading latest forecast…');
+    const lat=coords.map(x=>x.lat.toFixed(5)).join(','), lon=coords.map(x=>x.lon.toFixed(5)).join(','), elev=ROUTES.map(r=>cToM(r.forecastElevationFt)).join(',');
+    const hourly='temperature_2m,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m,weather_code,cloud_cover,visibility,cape';
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&elevation=${elev}&hourly=${hourly}&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=Europe%2FParis&forecast_days=16&cell_selection=land`;
+    const res=await fetch(url); if(!res.ok) throw new Error(`Forecast server ${res.status}`);
+    let forecasts=await res.json(); if(!Array.isArray(forecasts))forecasts=[forecasts];
+    if(forecasts.length!==ROUTES.length) throw new Error(`Forecast location count mismatch (${forecasts.length}/${ROUTES.length})`);
+    const agg=ROUTES.map((r,i)=>aggregateForecast(r,forecasts[i]));
+    agg.forEach((x,i)=>x&&applyRow(i,x));
+    
+    const nowTs = Date.now();
+    try{localStorage.setItem(CACHE_KEY,JSON.stringify({timestamp:nowTs,rows:agg}));}catch(e){}
+    updateLastUpdatedTimestamp(nowTs);
+    const filled=agg.filter(Boolean).length;
+    setStatus(`Updated ${new Date().toLocaleString()} · ${filled}/${ROUTES.length} windows available`);
+  }catch(e){ 
+    console.error(e); 
+    setStatus(`Offline or fetch failed. Displaying cached data.`, true); 
+  }
+  finally{refreshBtn.disabled=false;document.body.classList.remove('loading');}
+}
+
+async function checkLocationPermissions() {
+  if (!navigator.geolocation) return;
+
+  if (navigator.permissions?.query) {
+    try {
+      const status = await navigator.permissions.query({ name: 'geolocation' });
+      if (status.state === 'granted') {
+        permBanner.style.display = 'none';
+        refreshCurrentLocation(false);
+        return;
+      } else if (status.state === 'prompt') {
+        permBanner.style.display = 'flex';
+        return;
+      }
+    } catch (e) {}
+  }
+
+  const savedState = localStorage.getItem(PERM_KEY);
+  if (!savedState) {
+    permBanner.style.display = 'flex';
+  }
+}
+
+enableGpsBtn.addEventListener('click', async () => {
+  enableGpsBtn.disabled = true;
+  enableGpsBtn.textContent = 'Requesting…';
+  const success = await refreshCurrentLocation(true);
+  if (success) {
+    permBanner.style.display = 'none';
+  } else {
+    enableGpsBtn.disabled = false;
+    enableGpsBtn.textContent = 'Retry GPS Access';
+  }
+});
+
+async function initializeApp() {
+  renderSeed();
+  applyCached();
+  await checkLocationPermissions();
+  if (navigator.onLine) {
+    setTimeout(() => refreshWeather(false), 350);
+  }
+}
+
+refreshBtn.addEventListener('click',()=>refreshWeather(true));
+initializeApp();
+</script>
+</body>
+</html>
