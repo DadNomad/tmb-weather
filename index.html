@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#175d8f">
-<title>TMB 2026 Live Weather Grid</title>
+<title>TMB Weather — Plan Your Hike</title>
 <style>
   :root {
     --ink:#102a43; --muted:#5f6c7b; --line:#d8e0e8; --head:#d8eaf7;
@@ -75,19 +75,27 @@
   .source-note{margin-top:10px;font-size:11px;color:#65717c;line-height:1.4}
   @media (max-width:800px){.shell{padding:8px}.status{text-align:left;min-width:100%}h1{font-size:19px}.table-wrap{border-radius:8px}table{font-size:13px}}
   @media print{body{background:#fff}.shell{max-width:none;padding:0}.toolbar button,.legend,.meta{display:none}.table-wrap{border:0;box-shadow:none;overflow:visible}table{min-width:0;font-size:9px}thead th{position:static}.source-note{font-size:8px}}
+  .trip-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0;font-size:14px}
+  .trip-controls input{font:inherit;padding:8px;border:1px solid #9fb9ce;border-radius:8px}
+  tr.past-day td{background:#eceff2!important;color:#737b84!important}
 </style>
 </head>
 <body>
 <div class="shell">
   <div class="toolbar">
     <div class="titleblock">
-      <h1>TMB 2026 — Live Weather by Route Window</h1>
+      <h1>TMB Weather — Plan Your Hike</h1>
       <div class="sub">Top row = your live GPS location, local date/time, and next 2-hour forecast. TMB rows separate hike day (D1–D10) from calendar date.</div>
     </div>
     <button id="refreshBtn" type="button">⟳ Refresh latest forecast</button>
     <div id="status" class="status">Ready</div>
   </div>
 
+  <div class="trip-controls">
+    <label for="startDate"><b>Hike starting date</b></label>
+    <input id="startDate" type="date" required aria-describedby="tripHelp">
+    <span id="tripHelp">Day 1 of your 10-day itinerary. Past days are grayed out; forecasts appear when available.</span>
+  </div>
   <div id="permissionBanner" class="perm-banner" style="display:none;">
     <span>📍 Enable location access to show live weather for your current position.</span>
     <button id="enableGpsBtn" type="button">Enable GPS Access</button>
@@ -135,7 +143,39 @@ const lastUpdatedEl = document.getElementById('lastUpdated');
 const permBanner = document.getElementById('permissionBanner');
 const enableGpsBtn = document.getElementById('enableGpsBtn');
 
-const CACHE_KEY = 'tmb2026_live_weather_v3';
+const CACHE_KEY = 'tmb_weather_v2_forecast';
+const startDateInput = document.getElementById('startDate');
+const START_DATE_KEY = 'tmb_weather_start_date';
+let tripRevision = 0;
+function routeToday(){
+  const parts = new Intl.DateTimeFormat('en-US',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const value = type => parts.find(p=>p.type===type).value;
+  return `${value('year')}-${value('month')}-${value('day')}`;
+}
+function validDate(value){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(value+'T12:00:00Z');
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0,10)===value;
+}
+function setTripDates(start){
+  ROUTES.forEach(r=>{
+    const stage = Number(r.day.match(/^D(\d+)/)[1]);
+    const date = new Date(start+'T12:00:00Z');
+    date.setUTCDate(date.getUTCDate()+stage-1);
+    r.date = date.toISOString().slice(0,10);
+    r.day = `D${stage} · ${date.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'})}`;
+    r.seedTemp = r.seedWind = r.seedPrecip = r.seedHazard = '';
+  });
+}
+function clearPastDays(){
+  const today = routeToday();
+  ROUTES.forEach((r,i)=>{
+    const row = tbody.querySelector(`tr[data-index="${i}"]`);
+    if(!row || r.date>=today) return;
+    row.classList.add('past-day');
+    row.querySelectorAll('[data-col]').forEach(cell=>{cell.textContent=cell.dataset.col==='hazard'?'Past day':'—';});
+  });
+}
 const GEO_PREFIX = 'tmb2026_geo_v2:';
 const PERM_KEY = 'tmb2026_loc_perm_requested';
 
@@ -253,6 +293,7 @@ function deriveHazard(r,x){
 }
 function paintCell(el, cls){ el.className=el.className.replace(/\b(temp|wind|precip|hazard)-[\w-]+\b/g,'').trim(); el.classList.add(cls); }
 function applyRow(i,x){
+  if(ROUTES[i].date<routeToday()) return;
   const tr=tbody.querySelector(`tr[data-index="${i}"]`); if(!tr||!x)return;
   const temp=tr.querySelector('[data-col="temp"]'), wind=tr.querySelector('[data-col="wind"]'), precip=tr.querySelector('[data-col="precip"]'), hazard=tr.querySelector('[data-col="hazard"]');
   temp.textContent=fmtRange(x.minT,x.maxT,'°F'); paintCell(temp,tempClass(x.maxT));
@@ -263,7 +304,7 @@ function applyRow(i,x){
 function applyCached(){
   try{
     const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');
-    if(!c?.rows)return false;
+    if(!c?.rows || c.startDate!==startDateInput.value)return false;
     c.rows.forEach((x,i)=>x&&applyRow(i,x));
     updateLastUpdatedTimestamp(c.timestamp);
     setStatus(`Cached forecast · ${new Date(c.timestamp).toLocaleString()}`);
@@ -396,9 +437,13 @@ async function refreshCurrentLocation(promptUser=true){
 }
 
 async function refreshWeather(force=true){
+  const revision = tripRevision;
+  const selectedStart = startDateInput.value;
+  clearPastDays();
   refreshBtn.disabled=true; document.body.classList.add('loading'); setStatus('Updating current location…');
   try{
     await refreshCurrentLocation(force);
+    if(revision!==tripRevision) return;
     setStatus('Resolving route points…');
     const coords=[];
     for(let i=0;i<ROUTES.length;i+=8){
@@ -411,19 +456,21 @@ async function refreshWeather(force=true){
     const res=await fetch(url); if(!res.ok) throw new Error(`Forecast server ${res.status}`);
     let forecasts=await res.json(); if(!Array.isArray(forecasts))forecasts=[forecasts];
     if(forecasts.length!==ROUTES.length) throw new Error(`Forecast location count mismatch (${forecasts.length}/${ROUTES.length})`);
-    const agg=ROUTES.map((r,i)=>aggregateForecast(r,forecasts[i]));
+    if(revision!==tripRevision) return;
+    const agg=ROUTES.map((r,i)=>r.date<routeToday()?null:aggregateForecast(r,forecasts[i]));
     agg.forEach((x,i)=>x&&applyRow(i,x));
     
     const nowTs = Date.now();
-    try{localStorage.setItem(CACHE_KEY,JSON.stringify({timestamp:nowTs,rows:agg}));}catch(e){}
+    try{localStorage.setItem(CACHE_KEY,JSON.stringify({timestamp:nowTs,startDate:selectedStart,rows:agg}));}catch(e){}
+    clearPastDays();
     updateLastUpdatedTimestamp(nowTs);
     const filled=agg.filter(Boolean).length;
     setStatus(`Updated ${new Date().toLocaleString()} · ${filled}/${ROUTES.length} windows available`);
   }catch(e){ 
     console.error(e); 
-    setStatus(`Offline or fetch failed. Displaying cached data.`, true); 
+    if(revision===tripRevision) setStatus(`Forecast unavailable. Any saved forecast shown may be outdated.`, true);
   }
-  finally{refreshBtn.disabled=false;document.body.classList.remove('loading');}
+  finally{if(revision===tripRevision){refreshBtn.disabled=false;document.body.classList.remove('loading');}}
 }
 
 async function checkLocationPermissions() {
@@ -462,8 +509,13 @@ enableGpsBtn.addEventListener('click', async () => {
 });
 
 async function initializeApp() {
+  let savedStart;
+  try{savedStart=localStorage.getItem(START_DATE_KEY);}catch(e){}
+  startDateInput.value=validDate(savedStart)?savedStart:routeToday();
+  setTripDates(startDateInput.value);
   renderSeed();
   applyCached();
+  clearPastDays();
   await checkLocationPermissions();
   if (navigator.onLine) {
     setTimeout(() => refreshWeather(false), 350);
@@ -471,6 +523,19 @@ async function initializeApp() {
 }
 
 refreshBtn.addEventListener('click',()=>refreshWeather(true));
+startDateInput.addEventListener('change',()=>{
+  if(!validDate(startDateInput.value)){startDateInput.reportValidity();return;}
+  tripRevision++;
+  try{localStorage.setItem(START_DATE_KEY,startDateInput.value);}catch(e){}
+  setTripDates(startDateInput.value);
+  renderSeed();
+  lastUpdatedEl.textContent='Last updated: Not yet for this itinerary';
+  applyCached();
+  clearPastDays();
+  refreshWeather(false);
+});
+setInterval(clearPastDays,60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)clearPastDays();});
 initializeApp();
 </script>
 </body>

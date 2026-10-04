@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tmb-weather-v2';
+const CACHE_NAME = 'tmb-weather-v2-start-date';
 const ASSETS = [
   './',
   './index.html',
