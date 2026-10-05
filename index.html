@@ -65,7 +65,7 @@
   tr.current-row td{background:#eaf5ff!important;border-top:0;border-bottom:2px solid #8fb9d6;font-weight:700}
   tr.current-row td.location{color:#0d4f7a}
   tr.current-row td.wx{font-weight:800}
-  .gps-note{font-size:11px;color:#5f6c7b;font-weight:500;margin-top:3px}
+  .location-note{font-size:11px;color:#5f6c7b;font-weight:500;margin-top:3px}
   .temp-cold{background:#dbeafe!important;color:#164e86}.temp-cool{background:#dff6f3!important;color:#155e63}.temp-mild{background:#ecf7dc!important;color:#3f6212}.temp-warm{background:#fff3bf!important;color:#795800}.temp-hot{background:#ffe0b2!important;color:#8a3d08}.temp-veryhot{background:#ffd1cf!important;color:#8f1f18}
   .wind-ok{background:#eef8ed!important;color:#27632a}.wind-med{background:#fff3bf!important;color:#765600}.wind-high{background:#ffe0b2!important;color:#853a08}.wind-severe{background:#ffd1cf!important;color:#8f1f18}
   .precip-dry{background:#eef7ff!important;color:#22577a}.precip-cloud{background:#eef0f3!important;color:#4a5562}.precip-low{background:#e7f3ff!important;color:#1d5e8c}.precip-med{background:#d5e9ff!important;color:#154c79}.precip-high{background:#c6dcf4!important;color:#123f66}.precip-storm{background:#e0d5f4!important;color:#4b2b75}
@@ -75,6 +75,11 @@
   .source-note{margin-top:10px;font-size:11px;color:#65717c;line-height:1.4}
   @media (max-width:800px){.shell{padding:8px}.status{text-align:left;min-width:100%}h1{font-size:19px}.table-wrap{border-radius:8px}table{font-size:13px}}
   @media print{body{background:#fff}.shell{max-width:none;padding:0}.toolbar button,.legend,.meta{display:none}.table-wrap{border:0;box-shadow:none;overflow:visible}table{min-width:0;font-size:9px}thead th{position:static}.source-note{font-size:8px}}
+  .units-toggle{display:flex;gap:4px;margin-left:auto;align-self:flex-start;border:1px solid #9fb9ce;padding:3px;border-radius:12px;background:white}
+  .units-toggle button{background:transparent;color:var(--accent);box-shadow:none;padding:8px 10px;white-space:nowrap}
+  .units-toggle button[aria-pressed="true"]{background:var(--accent);color:white}
+  .units-toggle button:focus-visible{outline:3px solid #e4a331;outline-offset:2px}
+  @media(max-width:800px){.toolbar .titleblock{min-width:0;flex:1 1 180px}.toolbar .units-toggle{order:0}.toolbar #refreshBtn,.toolbar .status{order:1}}
   .trip-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0;font-size:14px}
   .trip-controls input{font:inherit;padding:8px;border:1px solid #9fb9ce;border-radius:8px}
   tr.past-day td{background:#eceff2!important;color:#737b84!important}
@@ -85,10 +90,14 @@
   <div class="toolbar">
     <div class="titleblock">
       <h1>TMB Weather — Plan Your Hike</h1>
-      <div class="sub">Top row = your live GPS location, local date/time, and next 2-hour forecast. TMB rows separate hike day (D1–D10) from calendar date.</div>
+      <div class="sub">Top row = your current location, local date/time, and next 2-hour forecast. TMB rows separate hike day (D1–D10) from calendar date.</div>
     </div>
     <button id="refreshBtn" type="button">⟳ Refresh latest forecast</button>
     <div id="status" class="status">Ready</div>
+    <div class="units-toggle" role="group" aria-label="Weather units">
+      <button id="imperialUnits" type="button" aria-pressed="true" title="Fahrenheit, miles per hour, inches and feet">°F / Imperial</button>
+      <button id="metricUnits" type="button" aria-pressed="false" title="Celsius, kilometres per hour, millimetres and metres">°C / Metric</button>
+    </div>
   </div>
 
   <div class="trip-controls">
@@ -97,8 +106,8 @@
     <span id="tripHelp">Day 1 of your 10-day itinerary. Past days are grayed out; forecasts appear when available.</span>
   </div>
   <div id="permissionBanner" class="perm-banner" style="display:none;">
-    <span>📍 Enable location access to show live weather for your current position.</span>
-    <button id="enableGpsBtn" type="button">Enable GPS Access</button>
+    <span>📍 Allow location access for nearby weather. Your browser can use Wi-Fi, mobile networks or GPS, depending on your device.</span>
+    <button id="enableLocationBtn" type="button">Enable location access</button>
   </div>
 
   <div id="lastUpdated" class="last-updated">Last updated: Never</div>
@@ -141,11 +150,46 @@ const statusEl = document.getElementById('status');
 const refreshBtn = document.getElementById('refreshBtn');
 const lastUpdatedEl = document.getElementById('lastUpdated');
 const permBanner = document.getElementById('permissionBanner');
-const enableGpsBtn = document.getElementById('enableGpsBtn');
+const enableLocationBtn = document.getElementById('enableLocationBtn');
 
 const CACHE_KEY = 'tmb_weather_v2_forecast';
 const startDateInput = document.getElementById('startDate');
 const START_DATE_KEY = 'tmb_weather_start_date';
+const UNITS_KEY = 'tmb_weather_units';
+let units = 'imperial';
+try{if(localStorage.getItem(UNITS_KEY)==='metric')units='metric';}catch(e){}
+let displayedRows = [];
+let displayedCurrent = null;
+const metric = ()=>units==='metric';
+const temperatureValue = value=>metric()?(value-32)*5/9:value;
+const speedValue = value=>metric()?value*1.609344:value;
+const temperatureText = value=>Number.isFinite(value)?`${Math.round(temperatureValue(value))}${metric()?'°C':'°F'}`:'—';
+const speedText = value=>Number.isFinite(value)?`${Math.round(speedValue(value))} ${metric()?'km/h':'mph'}`:'—';
+const precipitationText = value=>Number.isFinite(value)?(metric()?`${(value*25.4).toFixed(1)} mm`:`${value.toFixed(2)}″`):'—';
+const temperatureRange = (min,max)=>fmtRange(temperatureValue(min),temperatureValue(max),metric()?'°C':'°F');
+function elevationText(feet){return Number.isFinite(feet)?`${Math.round(metric()?feet*0.3048:feet).toLocaleString()} ${metric()?'m':'ft'}`:'—';}
+function locationText(location){
+  if(!metric())return location;
+  return location.replace(/([~\d,–\-]+) ft\b/g,(_,range)=>range.replace(/[\d,]+/g,value=>Math.round(Number(value.replace(/,/g,''))*0.3048).toLocaleString())+' m');
+}
+function renderUnits(){
+  document.getElementById('imperialUnits').setAttribute('aria-pressed',String(!metric()));
+  document.getElementById('metricUnits').setAttribute('aria-pressed',String(metric()));
+  const labels=metric()?['Cold <7.2°C','Cool 7.2–<12.8°C','Mild 12.8–<20°C','Warm 20–<25.6°C','Hot 25.6–<29.4°C','Very hot ≥29.4°C']:['Cold <45°F','Cool 45–<55°F','Mild 55–<68°F','Warm 68–<78°F','Hot 78–<85°F','Very hot ≥85°F'];
+  document.querySelectorAll('.legend span').forEach((el,i)=>{if(i<labels.length)el.textContent=labels[i];});
+  ROUTES.forEach((r,i)=>{
+    const row=tbody.querySelector(`tr[data-index="${i}"]`);
+    if(row)row.querySelector('.location').textContent=locationText(r.location);
+  });
+  displayedRows.forEach((x,i)=>{if(x)applyRow(i,x);});
+  if(displayedCurrent)applyCurrentForecast(displayedCurrent.x,displayedCurrent.meta);
+  clearPastDays();
+}
+function setUnits(value){
+  units=value;
+  try{localStorage.setItem(UNITS_KEY,units);}catch(e){}
+  renderUnits();
+}
 let tripRevision = 0;
 function routeToday(){
   const parts = new Intl.DateTimeFormat('en-US',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -192,7 +236,7 @@ function renderSeed(){
   const currentRow = `<tr id="currentRow" class="current-row">
       <td class="day route-static">NOW</td>
       <td class="date route-static" id="currentDate">—</td>
-      <td class="location route-static" id="currentLocation">Current location<div class="gps-note">Press Refresh to identify this place and update the next 2 hours.</div></td>
+      <td class="location route-static" id="currentLocation">Current location<div class="location-note">Press Refresh to identify this place and update the next 2 hours.</div></td>
       <td class="country route-static" id="currentCountry">—</td>
       <td class="window route-static" id="currentWindow">Now → +2 hr</td>
       <td class="wx temp" id="currentTemp">—</td>
@@ -208,7 +252,7 @@ function renderSeed(){
     return `<tr data-index="${i}" class="${start?'day-start':''}">
       <td class="day route-static">${esc(stage)}</td>
       <td class="date route-static">${esc(date)}</td>
-      <td class="location route-static">${esc(r.location)}</td>
+      <td class="location route-static">${esc(locationText(r.location))}</td>
       <td class="country route-static">${esc(r.country)}</td>
       <td class="window route-static">${esc(r.window)}</td>
       <td class="wx temp" data-col="temp">${esc(r.seedTemp||'—')}</td>
@@ -281,10 +325,10 @@ function aggregateForecast(r, f){
 function deriveHazard(r,x){
   const notes=[]; let level=0;
   if(x.code>=95 || (x.cape>=800 && x.prob>=30)){notes.push('⚡ Thunderstorm signal');level=3;}
-  if(x.gust>=35){notes.push(`💨 Gusts to ${Math.round(x.gust)} mph`);level=Math.max(level,3);} else if(x.gust>=25){notes.push(`💨 Gusty ${Math.round(x.gust)} mph`);level=Math.max(level,2);} else if(x.wind>=18){notes.push(`💨 Wind ${Math.round(x.wind)} mph`);level=Math.max(level,1);}
-  if(x.amt>=0.15){notes.push(`🌧️ Wet window ~${x.amt.toFixed(2)}″`);level=Math.max(level,2);} else if(x.prob>=50){notes.push(`🌦️ ${Math.round(x.prob)}% precip`);level=Math.max(level,1);}
-  if(x.maxT>=85){notes.push(`🥵 Heat ${Math.round(x.maxT)}°F`);level=Math.max(level,2);} else if(x.maxT>=80){notes.push(`☀️ Warm ${Math.round(x.maxT)}°F`);level=Math.max(level,1);}
-  if(x.minT<=40){notes.push(`🥶 Cold ${Math.round(x.minT)}°F`);level=Math.max(level,1);}
+  if(x.gust>=35){notes.push(`💨 Gusts to ${speedText(x.gust)}`);level=Math.max(level,3);} else if(x.gust>=25){notes.push(`💨 Gusty ${speedText(x.gust)}`);level=Math.max(level,2);} else if(x.wind>=18){notes.push(`💨 Wind ${speedText(x.wind)}`);level=Math.max(level,1);}
+  if(x.amt>=0.15){notes.push(`🌧️ Wet window ~${precipitationText(x.amt)}`);level=Math.max(level,2);} else if(x.prob>=50){notes.push(`🌦️ ${Math.round(x.prob)}% precip`);level=Math.max(level,1);}
+  if(x.maxT>=85){notes.push(`🥵 Heat ${temperatureText(x.maxT)}`);level=Math.max(level,2);} else if(x.maxT>=80){notes.push(`☀️ Warm ${temperatureText(x.maxT)}`);level=Math.max(level,1);}
+  if(x.minT<=40){notes.push(`🥶 Cold ${temperatureText(x.minT)}`);level=Math.max(level,1);}
   if(x.visibility<=3000){notes.push('🌫️ Low visibility');level=Math.max(level,2);}
   const exposed=/Col |Aiguillette|Tête|Bovine|Mont Favre|Chéserys|Ferret|Seigne|Bonhomme/i.test(r.location);
   if(exposed && (level>=2 || x.gust>=22)) notes.push('⛰️ Exposed terrain');
@@ -294,11 +338,12 @@ function deriveHazard(r,x){
 function paintCell(el, cls){ el.className=el.className.replace(/\b(temp|wind|precip|hazard)-[\w-]+\b/g,'').trim(); el.classList.add(cls); }
 function applyRow(i,x){
   if(ROUTES[i].date<routeToday()) return;
+  displayedRows[i]=x;
   const tr=tbody.querySelector(`tr[data-index="${i}"]`); if(!tr||!x)return;
   const temp=tr.querySelector('[data-col="temp"]'), wind=tr.querySelector('[data-col="wind"]'), precip=tr.querySelector('[data-col="precip"]'), hazard=tr.querySelector('[data-col="hazard"]');
-  temp.textContent=fmtRange(x.minT,x.maxT,'°F'); paintCell(temp,tempClass(x.maxT));
-  wind.textContent=`${Math.round(x.wind)} mph · G${Math.round(x.gust)}`; paintCell(wind,windClass(x.wind,x.gust));
-  const icon=weatherIcon(x.code,x.prob,x.amt,x.cloud,x.cape); precip.textContent=`${icon} ${Math.round(x.prob)}% · ${x.amt.toFixed(2)}″`; paintCell(precip,precipClass(x.code,x.prob,x.amt,x.cape));
+  temp.textContent=temperatureRange(x.minT,x.maxT); paintCell(temp,tempClass(x.maxT));
+  wind.textContent=`${speedText(x.wind)} · G${Math.round(speedValue(x.gust))}`; paintCell(wind,windClass(x.wind,x.gust));
+  const icon=weatherIcon(x.code,x.prob,x.amt,x.cloud,x.cape); precip.textContent=`${icon} ${Math.round(x.prob)}% · ${precipitationText(x.amt)}`; paintCell(precip,precipClass(x.code,x.prob,x.amt,x.cape));
   const hz=deriveHazard(ROUTES[i],x); hazard.innerHTML=`<span class="badge">${confidence(ROUTES[i].date).label}</span>${esc(hz.text)}`; paintCell(hazard,hz.level>=3?'hazard-danger':hz.level===2?'hazard-warn':hz.level===1?'hazard-watch':'hazard-none');
 }
 function applyCached(){
@@ -312,7 +357,7 @@ function applyCached(){
   }catch(e){return false;}
 }
 
-function getGeoPosition(options={enableHighAccuracy:true,timeout:12000,maximumAge:120000}){
+function getGeoPosition(options={enableHighAccuracy:false,timeout:20000,maximumAge:120000}){
   return new Promise((resolve,reject)=>{
     if(!navigator.geolocation) return reject(new Error('Location is not supported by this browser'));
     navigator.geolocation.getCurrentPosition(resolve,reject,options);
@@ -333,7 +378,7 @@ function shortCountry(countryCode,countryName){
   if(cc==='IT') return 'Italy';
   if(cc==='CH') return 'Switzerland';
   if(cc==='GB') return 'UK';
-  return countryName||cc||'GPS';
+  return countryName||cc||'Location';
 }
 function shortRegion(regionCode,regionName,countryCode){
   const code=String(regionCode||'').toUpperCase();
@@ -360,19 +405,20 @@ async function reverseGeocodeCurrent(lat,lon){
     const label=[locality,region,country].filter(Boolean).join(', ');
     return {label,country};
   }catch(e){
-    return {label:`${lat.toFixed(4)}, ${lon.toFixed(4)}`,country:'GPS'};
+    return {label:`${lat.toFixed(4)}, ${lon.toFixed(4)}`,country:'Location'};
   }
 }
 function applyCurrentForecast(x, meta){
+  displayedCurrent={x,meta};
   const dateEl=document.getElementById('currentDate'), loc=document.getElementById('currentLocation'), country=document.getElementById('currentCountry'), win=document.getElementById('currentWindow');
   const temp=document.getElementById('currentTemp'), wind=document.getElementById('currentWind'), precip=document.getElementById('currentPrecip'), hazard=document.getElementById('currentHazard');
   dateEl.textContent=new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric',timeZone:meta.timeZone}).format(meta.now);
-  loc.innerHTML=`${esc(meta.placeName)} · ~${Math.round(meta.elevationFt).toLocaleString()} ft<div class="gps-note">GPS ${meta.lat.toFixed(4)}, ${meta.lon.toFixed(4)}</div>`;
-  country.textContent=meta.countryName||'GPS';
-  win.innerHTML=`${esc(fmtClock(meta.now,meta.timeZone))}–${esc(fmtClock(meta.end,meta.timeZone))}<div class="gps-note">${esc(meta.timeZoneAbbr||'')} · ${esc(meta.timeZone)}</div>`;
-  temp.textContent=fmtRange(x.minT,x.maxT,'°F'); paintCell(temp,tempClass(x.maxT));
-  wind.textContent=`${Math.round(x.wind)} mph · G${Math.round(x.gust)}`; paintCell(wind,windClass(x.wind,x.gust));
-  const icon=weatherIcon(x.code,x.prob,x.amt,x.cloud,x.cape); precip.textContent=`${icon} ${Math.round(x.prob)}% · ${x.amt.toFixed(2)}″`; paintCell(precip,precipClass(x.code,x.prob,x.amt,x.cape));
+  loc.innerHTML=`${esc(meta.placeName)} · ~${elevationText(meta.elevationFt)}<div class="location-note">Location ${meta.lat.toFixed(4)}, ${meta.lon.toFixed(4)}${Number.isFinite(meta.accuracy)?` · accuracy ±${elevationText(meta.accuracy/0.3048)}`:''}${Number.isFinite(meta.positionTimestamp)?` · located ${Math.max(0,Math.floor((Date.now()-meta.positionTimestamp)/60000))} min ago`:''}</div>`;
+  country.textContent=meta.countryName||'Location';
+  win.innerHTML=`${esc(fmtClock(meta.now,meta.timeZone))}–${esc(fmtClock(meta.end,meta.timeZone))}<div class="location-note">${esc(meta.timeZoneAbbr||'')} · ${esc(meta.timeZone)}</div>`;
+  temp.textContent=temperatureRange(x.minT,x.maxT); paintCell(temp,tempClass(x.maxT));
+  wind.textContent=`${speedText(x.wind)} · G${Math.round(speedValue(x.gust))}`; paintCell(wind,windClass(x.wind,x.gust));
+  const icon=weatherIcon(x.code,x.prob,x.amt,x.cloud,x.cape); precip.textContent=`${icon} ${Math.round(x.prob)}% · ${precipitationText(x.amt)}`; paintCell(precip,precipClass(x.code,x.prob,x.amt,x.cape));
   const fake={location:meta.placeName,date:new Intl.DateTimeFormat('en-CA',{timeZone:meta.timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(meta.now)};
   const hz=deriveHazard(fake,x); hazard.innerHTML=`<span class="badge">NOW</span>${esc(hz.text)}`; paintCell(hazard,hz.level>=3?'hazard-danger':hz.level===2?'hazard-warn':hz.level===1?'hazard-watch':'hazard-none');
 }
@@ -381,19 +427,35 @@ function aggregateCurrentForecast(f){
   const idx=h.time.map((_,i)=>i);
   if(!idx.length) return null;
   const vals=(name)=>idx.map(i=>Number(h[name]?.[i])).filter(Number.isFinite);
-  const temps=vals('temperature_2m'),winds=vals('wind_speed_10m'),gusts=vals('wind_gusts_10m'),probs=vals('precipitation_probability'),amts=vals('precipitation'),codes=idx.map(i=>Number(h[name]?.[i]||0)),clouds=vals('cloud_cover'),vis=vals('visibility'),capes=vals('cape');
+  const temps=vals('temperature_2m'),winds=vals('wind_speed_10m'),gusts=vals('wind_gusts_10m'),probs=vals('precipitation_probability'),amts=vals('precipitation'),codes=idx.map(i=>Number(h.weather_code?.[i]||0)),clouds=vals('cloud_cover'),vis=vals('visibility'),capes=vals('cape');
   return {minT:Math.min(...temps),maxT:Math.max(...temps),wind:Math.max(0,...winds),gust:Math.max(0,...gusts),prob:Math.max(0,...probs),amt:amts.reduce((a,b)=>a+b,0),code:worstCode(codes),cloud:clouds.length?clouds.reduce((a,b)=>a+b,0)/clouds.length:0,visibility:vis.length?Math.min(...vis):999999,cape:capes.length?Math.max(...capes):0};
 }
-async function refreshCurrentLocation(promptUser=true){
+let currentLocationRequest = null;
+function refreshCurrentLocation(promptUser=true){
+  if(currentLocationRequest)return currentLocationRequest;
+  currentLocationRequest=loadCurrentLocation(promptUser).finally(()=>{currentLocationRequest=null;});
+  return currentLocationRequest;
+}
+async function loadCurrentLocation(promptUser=true){
   const hazard=document.getElementById('currentHazard');
   try{
-    if(!promptUser && navigator.permissions?.query){
-      const perm=await navigator.permissions.query({name:'geolocation'});
-      if(perm.state!=='granted') return false;
+    if(!promptUser){
+      // Automatic refresh must not open a permission prompt.
+      try{
+        if(!navigator.permissions?.query)return false;
+        const perm=await navigator.permissions.query({name:'geolocation'});
+        if(perm.state!=='granted')return false;
+      }catch(e){return false;}
     }
     hazard.textContent='Getting current location…';
-    const pos=await getGeoPosition();
-    localStorage.setItem(PERM_KEY, 'granted');
+    let pos;
+    try{pos=await getGeoPosition();}
+    catch(error){
+      if(error.code!==2 && error.code!==3)throw error;
+      hazard.textContent='Trying a recent browser location…';
+      pos=await getGeoPosition({enableHighAccuracy:false,timeout:10000,maximumAge:600000});
+    }
+    try{localStorage.setItem(PERM_KEY, 'granted');}catch(e){}
     permBanner.style.display = 'none';
 
     const {latitude:lat,longitude:lon,altitude}=pos.coords;
@@ -415,25 +477,28 @@ async function refreshCurrentLocation(promptUser=true){
     const end=new Date(now.getTime()+2*60*60*1000);
 
     applyCurrentForecast(x,{
-      lat,lon,elevationFt:elevFt,
+      lat,lon,elevationFt:elevFt,accuracy:pos.coords.accuracy,positionTimestamp:pos.timestamp,
       placeName:place.label,
       countryName:place.country,
       timeZone,timeZoneAbbr,
       now,end
     });
     return true;
-  // Replace the catch block in refreshCurrentLocation with this:
-} catch(e) {
-  let errorMsg = e.message || 'Unknown error';
-  if (e.code === 1) errorMsg = 'PERMISSION_DENIED: Check Chrome & Android location settings.';
-  if (e.code === 2) errorMsg = 'POSITION_UNAVAILABLE: Turn on Phone GPS / Location.';
-  if (e.code === 3) errorMsg = 'TIMEOUT: Location request timed out.';
-  if (!window.isSecureContext) errorMsg = 'INSECURE ORIGIN: Geolocation requires HTTPS or localhost.';
-
-  alert(`GPS Error: ${errorMsg}`);
-  hazard.textContent = `Location unavailable: ${errorMsg}`;
-  return false;
-}
+  }catch(e){
+    let message='Could not load weather for your location. Please retry.';
+    if(e.code===1)message='Location access is blocked. Allow location for this site in your browser and device settings, then retry.';
+    if(e.code===2)message='Your browser could not determine your location. Check device location services and your network connection, then retry.';
+    if(e.code===3)message='Your browser did not return a location in time. Check device location services, then retry.';
+    if(!navigator.geolocation)message='Location is not supported by this browser.';
+    if(!window.isSecureContext)message='Location access requires HTTPS or localhost.';
+    displayedCurrent=null;
+    ['currentTemp','currentWind','currentPrecip'].forEach(id=>{document.getElementById(id).textContent='—';});
+    hazard.textContent=message;
+    permBanner.style.display='flex';
+    enableLocationBtn.disabled=false;
+    enableLocationBtn.textContent='Retry location access';
+    return false;
+  }
 }
 
 async function refreshWeather(force=true){
@@ -442,7 +507,8 @@ async function refreshWeather(force=true){
   clearPastDays();
   refreshBtn.disabled=true; document.body.classList.add('loading'); setStatus('Updating current location…');
   try{
-    await refreshCurrentLocation(force);
+    // Route forecasts must not wait for location permission or a slow provider.
+    refreshCurrentLocation(force);
     if(revision!==tripRevision) return;
     setStatus('Resolving route points…');
     const coords=[];
@@ -474,37 +540,32 @@ async function refreshWeather(force=true){
 }
 
 async function checkLocationPermissions() {
-  if (!navigator.geolocation) return;
-
-  if (navigator.permissions?.query) {
-    try {
-      const status = await navigator.permissions.query({ name: 'geolocation' });
-      if (status.state === 'granted') {
-        permBanner.style.display = 'none';
-        refreshCurrentLocation(false);
-        return;
-      } else if (status.state === 'prompt') {
-        permBanner.style.display = 'flex';
-        return;
-      }
-    } catch (e) {}
+  permBanner.style.display='flex';
+  if(!navigator.geolocation){
+    enableLocationBtn.disabled=true;
+    document.getElementById('currentHazard').textContent='Location is not supported by this browser. Route forecasts still work.';
+    return;
   }
-
-  const savedState = localStorage.getItem(PERM_KEY);
-  if (!savedState) {
-    permBanner.style.display = 'flex';
-  }
+  try{
+    if(navigator.permissions?.query){
+      const permission=await navigator.permissions.query({name:'geolocation'});
+      if(permission.state==='granted')permBanner.style.display='none';
+      if(permission.state==='denied')document.getElementById('currentHazard').textContent='Allow location for this site in your browser and device settings to show nearby weather.';
+    }
+  }catch(e){}
 }
 
-enableGpsBtn.addEventListener('click', async () => {
-  enableGpsBtn.disabled = true;
-  enableGpsBtn.textContent = 'Requesting…';
+enableLocationBtn.addEventListener('click', async () => {
+  enableLocationBtn.disabled = true;
+  enableLocationBtn.textContent = 'Requesting…';
   const success = await refreshCurrentLocation(true);
+  enableLocationBtn.disabled = false;
   if (success) {
     permBanner.style.display = 'none';
+    enableLocationBtn.textContent = 'Enable location access';
   } else {
-    enableGpsBtn.disabled = false;
-    enableGpsBtn.textContent = 'Retry GPS Access';
+    enableLocationBtn.disabled = false;
+    enableLocationBtn.textContent = 'Retry location access';
   }
 });
 
@@ -515,6 +576,7 @@ async function initializeApp() {
   setTripDates(startDateInput.value);
   renderSeed();
   applyCached();
+  renderUnits();
   clearPastDays();
   await checkLocationPermissions();
   if (navigator.onLine) {
@@ -523,9 +585,13 @@ async function initializeApp() {
 }
 
 refreshBtn.addEventListener('click',()=>refreshWeather(true));
+document.getElementById('imperialUnits').addEventListener('click',()=>setUnits('imperial'));
+document.getElementById('metricUnits').addEventListener('click',()=>setUnits('metric'));
 startDateInput.addEventListener('change',()=>{
   if(!validDate(startDateInput.value)){startDateInput.reportValidity();return;}
   tripRevision++;
+  displayedRows=[];
+  displayedCurrent=null;
   try{localStorage.setItem(START_DATE_KEY,startDateInput.value);}catch(e){}
   setTripDates(startDateInput.value);
   renderSeed();
