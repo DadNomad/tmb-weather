@@ -1,8 +1,10 @@
-const CACHE_NAME = 'tmb-weather-v2-title';
+const CACHE_NAME = 'tmb-weather-v3-rounded-windows';
 const ASSETS = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './route-lookup.json',
+  './forecast-points.json'
 ];
 
 self.addEventListener('install', (event) => {

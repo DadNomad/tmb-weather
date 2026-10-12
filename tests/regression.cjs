@@ -16,8 +16,48 @@ const context = vm.createContext({
 });
 vm.runInContext(script, context);
 const run = code => vm.runInContext(code, context);
+context.lookup = JSON.parse(fs.readFileSync(path.join(__dirname,'..','route-lookup.json'),'utf8'));
+run("routeLookup=lookup;document.getElementById('tripDays').value='10';document.getElementById('tripDirection').value='counterclockwise';document.getElementById('tripPace').value='normal';buildRoute();");
 
 async function main(){
+  for(const [start,end,label,roundedStart,roundedEnd] of [
+    [480,524,'8–10 AM',480,600],
+    [524,564,'8–10 AM',480,600],
+    [564,614,'9–11 AM',540,660],
+    [614,748,'10 AM–1 PM',600,780],
+    [651,771,'11 AM–1 PM',660,780],
+    [645,660,'11 AM–1 PM',660,780],
+    [644,660,'10 AM–12 PM',600,720],
+    [780,900,'1–3 PM',780,900]
+  ]){
+    const result=run(`roundedWindow(${start},${end})`);
+    assert.equal(result.window,label);
+    assert.equal(result.startMinute,roundedStart);
+    assert.equal(result.endMinute,roundedEnd);
+  }
+  const points=JSON.parse(fs.readFileSync(path.join(__dirname,'..','forecast-points.json'),'utf8'));
+  for(const location of Object.keys(context.lookup.locations)){
+    assert(points[location],`Missing forecast point: ${location}`);
+    assert(points[location].lat>45.65 && points[location].lat<46.1);
+    assert(points[location].lon>6.65 && points[location].lon<7.2);
+    assert(points[location].source.startsWith('https://'));
+  }
+  for(const direction of ['counterclockwise','clockwise'])for(const days of [8,9,10,11,12])for(const pace of ['normal','faster']){
+    run(`document.getElementById('tripDays').value='${days}';document.getElementById('tripDirection').value='${direction}';document.getElementById('tripPace').value='${pace}';buildRoute();setTripDates('2026-12-27');`);
+    assert.equal(run('ROUTES.length'),42);
+    assert.equal(run('new Set(ROUTES.map(r=>r.date)).size'),days);
+    const plan=context.lookup.itineraries[direction][days];
+    assert(run('ROUTES[0].stageTitle').includes(plan[0].start_name));
+    assert(run('ROUTES.at(-1).stageTitle').includes(plan.at(-1).finish_name));
+  }
+  run("document.getElementById('tripDays').value='10';document.getElementById('tripDirection').value='counterclockwise';document.getElementById('tripPace').value='normal';buildRoute();");
+  // A short section between hourly timestamps must still receive weather.
+  const partial=run("aggregateForecast({date:'2026-10-07',startMinute:524,endMinute:564},{hourly:{time:['2026-10-07T08:00','2026-10-07T09:00','2026-10-07T10:00'],temperature_2m:[50,60,90],weather_code:[0,3,95],precipitation:[0.1,0.2,1]}})");
+  assert.equal(partial.minT,50);assert.equal(partial.maxT,60);assert.equal(partial.code,3);
+  const oldKey=run('tripKey()');
+  run("document.getElementById('tripPace').value='faster'");
+  assert.notEqual(run('tripKey()'),oldKey);
+  run("document.getElementById('tripPace').value='normal'");
   assert.equal(run("units='metric';temperatureText(32)"),'0°C');
   assert.equal(run('temperatureText(68)'),'20°C');
   assert.equal(run('temperatureRange(32,50)'),'0–10°C');
@@ -85,6 +125,6 @@ async function main(){
   assert.equal(first,second);
   fail({code:1});
   await first;
-  console.log('PASS: unit conversions, hazard consistency, dates, cache isolation, weather codes, browser-location options, fallback, denial, permission prompts and request deduplication.');
+  console.log('PASS: 20 itinerary combinations, 44 sourced forecast points, short forecast windows, units, hazard consistency, calendar boundaries, cache identity, weather codes and browser-location behavior.');
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

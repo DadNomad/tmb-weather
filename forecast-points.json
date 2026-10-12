@@ -1,0 +1,313 @@
+{
+  "bionnassay": {
+    "lat": 45.8655237,
+    "lon": 6.7578041,
+    "mapped_name": "Bionnassay",
+    "source": "https://www.openstreetmap.org/node/11158929385",
+    "checked": "2026-10-12"
+  },
+  "col_voza": {
+    "lat": 45.8768605,
+    "lon": 6.7613974,
+    "mapped_name": "Col de Voza",
+    "source": "https://www.openstreetmap.org/node/2019633861",
+    "checked": "2026-10-12"
+  },
+  "le_champel": {
+    "lat": 45.8599089,
+    "lon": 6.7362358,
+    "mapped_name": "Le Champel",
+    "source": "https://www.openstreetmap.org/node/2318534635",
+    "checked": "2026-10-12"
+  },
+  "les_houches": {
+    "lat": 45.891508,
+    "lon": 6.799138,
+    "mapped_name": "Les Houches",
+    "source": "https://www.openstreetmap.org/relation/104826",
+    "checked": "2026-10-12"
+  },
+  "nant_borrant": {
+    "lat": 45.7784443,
+    "lon": 6.7142496,
+    "mapped_name": "Chalet - Refuge de Nant Borrant",
+    "source": "https://www.openstreetmap.org/way/98063753",
+    "checked": "2026-10-12"
+  },
+  "les_contamines": {
+    "lat": 45.8210905,
+    "lon": 6.72751,
+    "mapped_name": "Les Contamines-Montjoie",
+    "source": "https://www.openstreetmap.org/relation/104726",
+    "checked": "2026-10-12"
+  },
+  "col_bonhomme": {
+    "lat": 45.735009,
+    "lon": 6.7066048,
+    "mapped_name": "Col du Bonhomme",
+    "source": "https://www.openstreetmap.org/node/2272032672",
+    "checked": "2026-10-12"
+  },
+  "la_balme": {
+    "lat": 45.7574106,
+    "lon": 6.7109697,
+    "mapped_name": "Refuge de la Balme",
+    "source": "https://www.openstreetmap.org/way/98061994",
+    "checked": "2026-10-12"
+  },
+  "croix_bonhomme": {
+    "lat": 45.7221409,
+    "lon": 6.7187395,
+    "mapped_name": "Col de la croix du bonhomme",
+    "source": "https://www.openstreetmap.org/node/5747766041",
+    "checked": "2026-10-12"
+  },
+  "ville_glaciers": {
+    "lat": 45.7273248,
+    "lon": 6.7671477,
+    "mapped_name": "La Ville des Glaciers",
+    "source": "https://www.openstreetmap.org/node/1773965385",
+    "checked": "2026-10-12"
+  },
+  "les_chapieux": {
+    "lat": 45.6966794,
+    "lon": 6.7335808,
+    "mapped_name": "Les Chapieux",
+    "source": "https://www.openstreetmap.org/way/1546729330",
+    "checked": "2026-10-12"
+  },
+  "mottets": {
+    "lat": 45.7371405,
+    "lon": 6.7790439,
+    "mapped_name": "Refuge des Mottets",
+    "source": "https://www.openstreetmap.org/node/288877825",
+    "checked": "2026-10-12"
+  },
+  "elisabetta": {
+    "lat": 45.7670009,
+    "lon": 6.8374366,
+    "mapped_name": "Rifugio Elisabetta Soldini Montanaro",
+    "source": "https://www.openstreetmap.org/way/60798744",
+    "checked": "2026-10-12"
+  },
+  "col_seigne": {
+    "lat": 45.7512639,
+    "lon": 6.8072131,
+    "mapped_name": "Col de la Seigne",
+    "source": "https://www.openstreetmap.org/node/289437168",
+    "checked": "2026-10-12"
+  },
+  "plan_checrouit": {
+    "lat": 45.7906354,
+    "lon": 6.9453679,
+    "mapped_name": "Plan Chécrouit",
+    "source": "https://www.openstreetmap.org/node/1499953915",
+    "checked": "2026-10-12"
+  },
+  "col_checrouit": {
+    "lat": 45.7908544,
+    "lon": 6.9312611,
+    "mapped_name": "Col Chécrouit",
+    "source": "https://www.openstreetmap.org/node/289451082",
+    "checked": "2026-10-12"
+  },
+  "courmayeur": {
+    "lat": 45.7874248,
+    "lon": 6.9730618,
+    "mapped_name": "Courmayeur",
+    "source": "https://www.openstreetmap.org/node/1766212721",
+    "checked": "2026-10-12"
+  },
+  "mont_favre": {
+    "lat": 45.7721817,
+    "lon": 6.8900263,
+    "mapped_name": "Arête du Mont Favre",
+    "source": "https://www.openstreetmap.org/node/7881154985",
+    "checked": "2026-10-12",
+    "note": "Representative point on the mapped Arête du Mont Favre; supplied forecast elevation retained."
+  },
+  "bertone": {
+    "lat": 45.8092416,
+    "lon": 6.9788634,
+    "mapped_name": "Rifugio Bertone",
+    "source": "https://www.openstreetmap.org/way/147963963",
+    "checked": "2026-10-12"
+  },
+  "bonatti": {
+    "lat": 45.8469128,
+    "lon": 7.0336398,
+    "mapped_name": "Rifugio Walter Bonatti",
+    "source": "https://www.openstreetmap.org/way/147536904",
+    "checked": "2026-10-12"
+  },
+  "chalet_val_ferret": {
+    "lat": 45.8708299,
+    "lon": 7.053236,
+    "mapped_name": "Chalet Val Ferret",
+    "source": "https://www.openstreetmap.org/node/4952246523",
+    "checked": "2026-10-12"
+  },
+  "elena": {
+    "lat": 45.8847187,
+    "lon": 7.0656381,
+    "mapped_name": "Rifugio Elena",
+    "source": "https://www.openstreetmap.org/node/353083724",
+    "checked": "2026-10-12"
+  },
+  "la_peule": {
+    "lat": 45.8986155,
+    "lon": 7.1125852,
+    "mapped_name": "La Peule",
+    "source": "https://www.openstreetmap.org/node/2820208447",
+    "checked": "2026-10-12"
+  },
+  "grand_col_ferret": {
+    "lat": 45.8890289,
+    "lon": 7.0778615,
+    "mapped_name": "Grand Col Ferret",
+    "source": "https://www.openstreetmap.org/node/1456229019",
+    "checked": "2026-10-12"
+  },
+  "ferret": {
+    "lat": 45.9160563,
+    "lon": 7.1051873,
+    "mapped_name": "Ferret",
+    "source": "https://www.openstreetmap.org/node/290469983",
+    "checked": "2026-10-12"
+  },
+  "praz_de_fort": {
+    "lat": 45.9894938,
+    "lon": 7.1250883,
+    "mapped_name": "Praz-de-Fort",
+    "source": "https://www.openstreetmap.org/node/240084849",
+    "checked": "2026-10-12"
+  },
+  "issert": {
+    "lat": 46.0027105,
+    "lon": 7.1257494,
+    "mapped_name": "Issert",
+    "source": "https://www.openstreetmap.org/node/290469980",
+    "checked": "2026-10-12"
+  },
+  "la_fouly": {
+    "lat": 45.9331158,
+    "lon": 7.0989678,
+    "mapped_name": "La Fouly",
+    "source": "https://www.openstreetmap.org/node/290469982",
+    "checked": "2026-10-12"
+  },
+  "champex": {
+    "lat": 46.0305776,
+    "lon": 7.1168165,
+    "mapped_name": "Champex-Lac",
+    "source": "https://www.openstreetmap.org/node/240105235",
+    "checked": "2026-10-12"
+  },
+  "plan_de_lau": {
+    "lat": 46.0501029,
+    "lon": 7.0793438,
+    "mapped_name": "Plan de l'Au",
+    "source": "https://www.openstreetmap.org/node/3021885871",
+    "checked": "2026-10-12"
+  },
+  "alp_bovine": {
+    "lat": 46.0554699,
+    "lon": 7.0495893,
+    "mapped_name": "Alpage de Bovine",
+    "source": "https://www.openstreetmap.org/node/492882014",
+    "checked": "2026-10-12"
+  },
+  "forclaz": {
+    "lat": 46.0577309,
+    "lon": 7.0013461,
+    "mapped_name": "Col de la Forclaz",
+    "source": "https://www.openstreetmap.org/node/945001634",
+    "checked": "2026-10-12"
+  },
+  "le_peuty": {
+    "lat": 46.0467822,
+    "lon": 6.9937113,
+    "mapped_name": "Le Peuty",
+    "source": "https://www.openstreetmap.org/node/1500602322",
+    "checked": "2026-10-12"
+  },
+  "col_balme": {
+    "lat": 46.0263673,
+    "lon": 6.9702886,
+    "mapped_name": "Col de Balme",
+    "source": "https://www.openstreetmap.org/node/1500628061",
+    "checked": "2026-10-12"
+  },
+  "aiguillette_posettes": {
+    "lat": 46.0181246,
+    "lon": 6.9402515,
+    "mapped_name": "Aiguillette des Posettes",
+    "source": "https://www.openstreetmap.org/node/345612748",
+    "checked": "2026-10-12"
+  },
+  "trelechamp": {
+    "lat": 45.9950152,
+    "lon": 6.9278634,
+    "mapped_name": "Tré-le-Champ - le Bas",
+    "source": "https://www.openstreetmap.org/node/1398912486",
+    "checked": "2026-10-12"
+  },
+  "chamonix": {
+    "lat": 45.9230969,
+    "lon": 6.8700009,
+    "mapped_name": "Chamonix-Mont-Blanc",
+    "source": "https://www.openstreetmap.org/relation/104836",
+    "checked": "2026-10-12"
+  },
+  "flegere": {
+    "lat": 45.9599953,
+    "lon": 6.8872948,
+    "mapped_name": "La Flégère",
+    "source": "https://www.openstreetmap.org/node/2940263651",
+    "checked": "2026-10-12"
+  },
+  "cheserys_tete": {
+    "lat": 45.9821219,
+    "lon": 6.9073707,
+    "mapped_name": "La Tête aux Vents",
+    "source": "https://www.openstreetmap.org/node/2678862214",
+    "checked": "2026-10-12"
+  },
+  "plan_praz": {
+    "lat": 45.9358506,
+    "lon": 6.8525898,
+    "mapped_name": "Planpraz",
+    "source": "https://www.openstreetmap.org/node/3431633966",
+    "checked": "2026-10-12"
+  },
+  "val_ferret_balcony": {
+    "lat": 45.8235669,
+    "lon": 6.9877477,
+    "mapped_name": "A. Leuchey Sup.",
+    "source": "https://www.openstreetmap.org/node/5132579827",
+    "checked": "2026-10-12",
+    "note": "Representative balcony point: A. Leuchey Sup."
+  },
+  "combal": {
+    "lat": 45.7763819,
+    "lon": 6.8677255,
+    "mapped_name": "Rifugio Combal",
+    "source": "https://www.openstreetmap.org/way/60798370",
+    "checked": "2026-10-12"
+  },
+  "chalets_plan": {
+    "lat": 45.708159,
+    "lon": 6.728425,
+    "mapped_name": "Chalets de Plan Varrago",
+    "source": "https://www.visorando.com/visorando-refuge-de-la-balme-bourg-saint-maurice.pdf",
+    "checked": "2026-10-12"
+  },
+  "champex_climb": {
+    "lat": 46.0027105,
+    "lon": 7.1257494,
+    "mapped_name": "Issert",
+    "source": "https://www.openstreetmap.org/node/290469980",
+    "checked": "2026-10-12",
+    "note": "Approximate forest-climb forecast: Issert coordinates adjusted to the supplied 1,300 m elevation."
+  }
+}
